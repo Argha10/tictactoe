@@ -1,68 +1,99 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Board from './components/Board';
 import History from './components/History';
 import StatusMessage from './components/StatusMessage';
 import { calculateWinner } from './helpers';
+import { INITIAL_HISTORY } from './constants';
 
 import './styles/root.scss';
 
-const NEW_GAME = [{ board: Array(9).fill(null), isNext: true }];
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      history: INITIAL_HISTORY,
+      currentMove: 0,
+    };
+  }
 
-const App = () => {
-  const [history, setHistory] = useState(NEW_GAME);
-  const [currentMove, setCurrentMove] = useState(0);
-  const current = history[currentMove];
-
-  const { winner, winningSquares } = calculateWinner(current.board);
-
-  const handleSquareClick = position => {
+  handleSquareClick = position => {
+    const { history, currentMove } = this.state;
+    const current = history[currentMove];
+    const { winner } = calculateWinner(current.board);
     if (current.board[position] || winner) {
       return;
     }
-    setHistory(prev => {
-      const last = prev[prev.length - 1];
+
+    this.setState(prev => {
+      const { history: prevHistory, currentMove: prevMove } = prev;
+      const last = prevHistory[prevHistory.length - 1];
       const newBoard = last.board.map((square, pos) => {
         if (pos === position) {
           return last.isNext ? 'X' : '0';
         }
         return square;
       });
-      return prev.concat({ board: newBoard, isNext: !last.isNext });
+      return {
+        currentMove: prevMove + 1,
+        history: [
+          ...prev.history,
+          {
+            board: newBoard,
+            isNext: !last.isNext,
+          },
+        ],
+      };
     });
-    setCurrentMove(prev => prev + 1);
-  };
-  const moveTo = move => {
-    setCurrentMove(move);
-  };
-  const onNewGame = () => {
-    setHistory(NEW_GAME);
-    setCurrentMove(0);
   };
 
-  return (
-    <div className="app">
-      <h1>
-        TIC <span className="text-green">TAC</span> TOE
-      </h1>
-      <StatusMessage winner={winner} current={current} />
-      <Board
-        board={current.board}
-        handleSquareClick={handleSquareClick}
-        winningSquares={winningSquares}
-      />
-      <button
-        type="button"
-        onClick={onNewGame}
-        className={` btn-reset ${winner ? 'active' : ''}`}
-      >
-        {' '}
-        Start New Game{' '}
-      </button>
-      <h2 style={{ fontWeight: 'normal' }}>Current game history</h2>
+  moveTo = move => {
+    const { history } = this.state;
+    this.setState({
+      history,
+      currentMove: move,
+    });
+  };
 
-      <History history={history} moveTo={moveTo} currentMove={currentMove} />
-      <div className="bg-balls" />
-    </div>
-  );
-};
+  onNewGame = () => {
+    this.setState({
+      history: INITIAL_HISTORY,
+      currentMove: 0,
+    });
+  };
+
+  render() {
+    const { history, currentMove } = this.state;
+    const current = history[currentMove];
+    const { winner, winningSquares } = calculateWinner(current.board);
+    return (
+      <div className="app">
+        <h1>
+          TIC <span className="text-green">TAC</span> TOE
+        </h1>
+        <StatusMessage winner={winner} current={current} />
+        <Board
+          board={current.board}
+          handleSquareClick={this.handleSquareClick}
+          winningSquares={winningSquares}
+        />
+        <button
+          type="button"
+          onClick={this.onNewGame}
+          className={` btn-reset ${winner ? 'active' : ''}`}
+        >
+          {' '}
+          Start New Game{' '}
+        </button>
+        <h2 style={{ fontWeight: 'normal' }}>Current game history</h2>
+
+        <History
+          history={history}
+          moveTo={this.moveTo}
+          currentMove={currentMove}
+        />
+        <div className="bg-balls" />
+      </div>
+    );
+  }
+}
 export default App;
